@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torch_geometric.nn.conv import GatedGraphConv
+from torch_geometric.nn import global_add_pool
+import pdb
 
 torch.manual_seed(2020)
 
@@ -24,25 +26,37 @@ def init_weights(m):
         torch.nn.init.xavier_uniform_(m.weight)
 
 class Readout(nn.Module):
-    def __init__(self, max_nodes):
+    def __init__(self, emb_size, hidden_dim):
         super(Readout, self).__init__()
-        self.max_nodes = max_nodes
+        self.hidden_dim = hidden_dim # the out_channel from GatedGraphConv
+        self.emb_size = emb_size
+        self.mlp = nn.Sequential(
+            nn.Linear(hidden_dim+emb_size,256),
+            nn.ReLU(),
+            nn.Linear(256,64),
+            nn.ReLU(),
+        )
+        self.out_fn = nn.Linear(64,1)
+        self.act_fn = nn.Sigmoid()
 
-    def forward(self, h, x):
-        # TODO
-        raise NotImplementedError    
+    def forward(self, h, x, batch):
+        feat = torch.concat([h,x],dim=-1)
+        feat = self.mlp(feat)
+        global_feat = global_add_pool(feat,batch)
+        global_feat = self.act_fn(self.out_fn(global_feat).squeeze())
+        return global_feat
 
 class Net(nn.Module):
     def __init__(self, gated_graph_conv_args, emb_size, max_nodes, device):
         super(Net, self).__init__()
         self.ggc = GatedGraphConv(**gated_graph_conv_args).to(device) 
         self.emb_size=emb_size
-        self.readout = Readout(max_nodes)       
+        self.readout = Readout(emb_size,gated_graph_conv_args['out_channels']).to(device) 
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
         x = self.ggc(x, edge_index)
-        x = self.readout(x, data.x)
+        x = self.readout(x, data.x, data.batch)
 
         return x
 

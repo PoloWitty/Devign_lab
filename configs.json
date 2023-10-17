@@ -59,7 +59,7 @@
         "patience": 10,
         "delta": 0,
         "verbose": true,
-        "batch_size": 512,
+        "batch_size": 32,
         "dataset_ratio": 0.6,
         "shuffle": false
     }
