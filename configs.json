@@ -9,7 +9,13 @@
                 "num_layers": 6,
                 "aggr": "add",
                 "bias": true
-            },            
+            },
+            "conv_args": {
+                "conv1d_1" : {"in_channels": 205, "out_channels": 50, "kernel_size": 3, "padding" : 1},
+                "conv1d_2" : {"in_channels": 50, "out_channels": 20, "kernel_size": 1, "padding" : 1},
+                "maxpool1d_1" : {"kernel_size" : 3, "stride" : 2},
+                "maxpool1d_2" : {"kernel_size" : 2, "stride" : 2}
+            },
             "emb_size": 101
         }
     },
@@ -56,10 +62,10 @@
     "process": {
         "use_gpu": true,
         "epochs": 200,
-        "patience": 10,
+        "patience": 30,
         "delta": 0,
         "verbose": true,
-        "batch_size": 32,
+        "batch_size": 8,
         "dataset_ratio": 0.6,
         "shuffle": false
     }
