@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torch_geometric.nn.conv import GatedGraphConv
+from torch_geometric.nn import GCNConv, Sequential, GATConv
 from torch_geometric.nn import global_add_pool
 import pdb
 
@@ -19,7 +20,6 @@ def get_conv_mp_out_size(in_size, last_layer, mps):
     size = size + 1 if size % 2 != 0 else size
 
     return int(size * last_layer["out_channels"])
-
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv1d:
@@ -96,7 +96,22 @@ class Readout(nn.Module):
 class Net(nn.Module):
     def __init__(self, gated_graph_conv_args, conv_args, emb_size, max_nodes, device):
         super(Net, self).__init__()
-        self.ggc = GatedGraphConv(**gated_graph_conv_args).to(device) 
+        # self.ggc = GatedGraphConv(**gated_graph_conv_args).to(device) 
+        # self.gcn = Sequential(
+        #     'x, edge_index',[
+        #     (GCNConv(emb_size, 256), 'x, edge_index -> x'),
+        #     nn.ReLU(inplace=True),
+        #     (GCNConv(256, gated_graph_conv_args['out_channels']), 'x, edge_index -> x'),
+        #     nn.ReLU(inplace=True)
+        #     ]).to(device)
+        self.gat = Sequential(
+            'x, edge_index',[
+            (GATConv(emb_size, 256), 'x, edge_index -> x'),
+            nn.ReLU(inplace=True),
+            (GATConv(256, gated_graph_conv_args['out_channels']), 'x, edge_index -> x'),
+            nn.ReLU(inplace=True)
+            ]).to(device)
+        
         self.emb_size=emb_size
         self.readout = Readout(emb_size,gated_graph_conv_args['out_channels']).to(device) 
         self.conv = Conv(**conv_args,
@@ -105,9 +120,19 @@ class Net(nn.Module):
         
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
-        x = self.ggc(x, edge_index)
-        x = self.readout(x, data.x, data.batch)
-        # x = self.conv(x, data.x)
+        # Process:
+        # method 1)
+        # x = self.ggc(x, edge_index)
+        # method 2)
+        # x = self.gcn(x,edge_index)
+        # method 3)
+        x = self.gat(x,edge_index)
+
+        # Readout:
+        # method 1)
+        x = self.conv(x, data.x)
+        # method 2)
+        # x = self.readout(x, data.x, data.batch)
 
         return x
 

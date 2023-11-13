@@ -18,7 +18,7 @@ conda activate devign
 tar -xzvf cpg.tar.gz
 
 # use word2vec to emb the token
-python main.py -e
+# python main.py -e
 
 # train an eval
-python main.py -pS
+# python main.py -pS
